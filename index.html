@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>SIP — Dashboard de Evaluación · Posgrado</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow-x:hidden}
+body{background:#064e3b;font-family:Georgia,serif;color:#f8fafc}
+#root{min-height:100vh}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:rgba(6,78,59,.3)}
+::-webkit-scrollbar-thumb{background:#10b981;border-radius:3px}
+input{outline:none;font-family:sans-serif}
+button{font-family:sans-serif}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fade{animation:fadeIn .25s ease}
+</style>
+</head>
+<body>
+<div id="root"><div style="min-height:100vh;display:flex;align-items:center;justify-content:center;color:#34d399;font-family:sans-serif">Cargando…</div></div>
+<script type="text/babel" data-presets="react">
+const {useState,useMemo,useEffect,useRef,useCallback} = React;
+const {RadarChart,Radar,PolarGrid,PolarAngleAxis,PolarRadiusAxis,BarChart,Bar,XAxis,YAxis,Tooltip,Legend,ResponsiveContainer,Cell,ReferenceLine} = Recharts;
+
+// ── Lucide icon stubs ──────────────────────────────────────────────────────────
+const Ico = ({d,size=16,style={}}) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}><path d={d}/></svg>;
+const Search    = ({size=15,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>;
+const Filter    = ({size=15,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={style}><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>;
+const ChevDown  = ({size=13,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={style}><polyline points="6 9 12 15 18 9"/></svg>;
+const ChevL     = ({size=14,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={style}><polyline points="15 18 9 12 15 6"/></svg>;
+const ChevR     = ({size=14,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={style}><polyline points="9 18 15 12 9 6"/></svg>;
+const ArrowL    = ({size=14,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={style}><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>;
+const Users     = ({size=17,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={style}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+const Award     = ({size=17,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={style}><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></svg>;
+const TrendUp   = ({size=17,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={style}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>;
+const Star      = ({size=17,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={style}><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>;
+const BookOpen  = ({size=17,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={style}><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
+const Download  = ({size=14,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={style}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+const GitCmp    = ({size=13,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={style}><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/><path d="M18 3v12a9 9 0 0 1-9-9"/></svg>;
+const AlertC    = ({size=14,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={style}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+const LogOut    = ({size=13,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={style}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>;
+const SortA     = ({size=11,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={style}><line x1="11" y1="5" x2="17" y2="5"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="3" y1="19" x2="17" y2="19"/><polyline points="21 4 21 19 17 15"/></svg>;
+const SortD     = ({size=11,style={}})=><svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={style}><line x1="11" y1="5" x2="17" y2="5"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="3" y1="19" x2="17" y2="19"/><polyline points="21 15 21 0 17 4"/></svg>;
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+const DATA = [
+  {e:"Abner Yeudiel Nájera Santes",pr:"Identificación de metabolitos secundarios en tres especies de orquideas propagadas in vitro.",pg:"1ro. MET",i:3.778,j:3.778,o:4.0,m:4.0,a:0.625,d:0.0,mp:2.697,mg:2.756,cv:9.727,cm:"Se sugiere ensayar la presentación para mejorar la fluidez y usar notas de apoyo. Debe quedar claro que el enfoque es la producción de callos y metabolitos, usando la especie solo como contexto. Se recomienda diseñar un instrumento de divulgación para que los horticultores puedan replicar la propagación in vitro sin extraer de vida silvestre."},
+  {e:"Adrián Cipres Chávez",pr:"Conservación y cuidado del territorio: experiencias participativas en el Sistema lagunar costero de Mandinga, Veracruz, México.",pg:"8to. DET",i:4.75,j:4.5,o:4.25,m:4.5,a:5.0,d:3.75,mp:4.458,mg:4.196,cv:9.75,cm:"Se aplaude la inclusión de una visión crítica que identifica obstáculos y errores, reconociendo la complejidad de la realidad."},
+  {e:"Alan Monroy Ojeda",pr:"Estado de conservación y análisis espacial para la reintroducción del Águila Harpía (Harpia harpyja) y analisis de la ecología de movimiento del Zopilote Rey (Sarcoramphus papa).",pg:"4to. DET",i:4.6,j:3.8,o:4.6,m:4.5,a:3.5,d:0.889,mp:3.648,mg:4.071,cv:9.714,cm:"Se recomienda incluir los enfoques de conservación en el marco teórico y desarrollar el posicionamiento ético-político y lugar de enunciación. Se sugiere realizar encuestas con actores locales sobre procesos históricos y revisar ejemplos de trabajos de conservación con otras especies para generar acciones de incidencia comunitaria. Es necesario aclarar los criterios para aplicar las entrevistas."},
+  {e:"Alfonso Blanco Callejas",pr:"Las cercas vivas como reservorio de biodiversidad vegetal: determinantes locales y paisajísticos en ambientes tropicales fragmentados.",pg:"2do. DET",i:4.0,j:4.0,o:4.0,m:4.0,a:1.857,d:0.0,mp:2.976,mg:2.985,cv:9.857,cm:"Se recomienda mencionar el método de validación para la clasificación supervisada y revisar metodologías de teledetección para monitoreo de insectos y vegetación. Se sugiere reducir la cantidad de texto en la presentación."},
+  {e:"Alma Delia Olivares Martínez",pr:"Evaluación y afinación de modelos de nicho de polinizadores en paisajes cafetaleras en el Centro del Estado de Veracruz.",pg:"1ro. MET",i:3.786,j:3.643,o:3.571,m:3.5,a:0.786,d:0.0,mp:2.548,mg:2.665,cv:9.467,cm:"Se recomienda presentar la parte experimental de forma más ordenada, posiblemente con un diagrama, y considerar que las abejas no son los únicos polinizadores, por lo que se debe revisar literatura sobre otros insectos y técnicas de colecta. Es vital reflexionar sobre el posicionamiento ético-político (compromiso con productores) y estandarizar los parámetros postcosecha para que las métricas de calidad de taza sean comparables."},
+  {e:"Andrea Cortes Ortega",pr:'Territorio Hidrosocial y urbanización: Analisis de las transformaciones y conflictos en comunidades rurales de Emiliano Zapata.',pg:"3ro. MET",i:3.333,j:3.222,o:3.667,m:3.556,a:1.667,d:1.0,mp:2.741,mg:2.730,cv:9.0,cm:'Se sugiere realizar un mapeo de actores sobre la gobernanza del agua e incorporar el análisis de "territorio hidrosocial". Es importante iniciar una discusión política sobre la privatización del agua y vincular mejor el lugar de enunciación con la introducción. Se recomienda mejorar la estructura de la presentación y considerar que el tercer objetivo derive de un taller de devolución.'},
+  {e:"Arantxa Huerta Toral",pr:"Dinámica de la Deforestación en el Municipio de Actopan, Veracruz (2014-2025): Un análisis de las causas subyacentes vinculadas a la expansión ganadera.",pg:"1ro. MET",i:4.083,j:3.583,o:3.833,m:3.909,a:1.0,d:0.583,mp:2.832,mg:2.573,cv:9.5,cm:"Se sugiere citar las fuentes de la metodología y precisar las variables de los factores subyacentes en la hipótesis. Es recomendable identificar el uso de suelo previo a la deforestación y utilizar métodos cualitativos para abordar la complejidad de las causas, evitando una visión lineal. Se propone realizar encuestas con actores locales (ganaderos) para entender la historia de la deforestación antes del periodo satelital y usar metodologías de validación como i-Tree canopy."},
+  {e:"Cristyan Moreno Guevara",pr:"Conocimiento morfológico, ecológico, uso y manejo del Chile piquín (Capsicum annuum var. glabriusculum) en el municipio de Yecuatla, Veracruz.",pg:"1ro. MET",i:3.909,j:3.909,o:3.909,m:3.818,a:0.818,d:0.0,mp:2.727,mg:3.130,cv:9.5,cm:'Se debe describir con mayor precisión las características biológicas de la especie y diferenciar conceptualmente entre "nicho ecológico" e "idoneidad ambiental". Se sugiere utilizar variables bioclimáticas ERA-5, considerar otros modeladores además de Maxent y ligar mejor los objetivos particulares con el general. También se recomienda desarrollar una postura ética-política y considerar un instrumento de difusión (nota periodística) para la apropiación regional del proyecto.'},
+  {e:"Daniela Del Ángel Hernández",pr:"Patrones fenológicos y niveles de herbivoria en Zamia loddigessi Miq. (Zamiaceae).",pg:"1ro. MET",i:4.833,j:3.833,o:4.5,m:4.667,a:1.333,d:0.0,mp:3.194,mg:2.976,cv:10.0,cm:"Se aconseja ser más breve en la introducción para explicar mejor la metodología. Se cuestiona cómo analizar los efectos causales de variables de colecta separadas de las ambientales y se sugiere evaluar la resiliencia de los hongos."},
+  {e:"Daniela Guadalupe Rios Elosegui",pr:"Conocimiento ecológico local acerca del impacto antrópico sobre las pesquerías del Golfo de México.",pg:"4to. DET",i:3.5,j:2.75,o:3.75,m:3.5,a:3.5,d:1.25,mp:3.042,mg:2.893,cv:9.25,cm:'Se recomienda anclar los avances con el Conocimiento Ecológico Tradicional e incorporar el enfoque de los "comunes" (escuela de Ostrom) para dar significado a la gobernanza en pesquerías.'},
+  {e:"David Chacón Castillo",pr:"Milpa de roza, tumba y quema en la Península de Yucatán: estado de conservación y dinámica en los patrones de biomasa en el paisaje.",pg:"6to. DET",i:4.0,j:4.0,o:4.0,m:4.0,a:3.5,d:1.333,mp:3.472,mg:3.520,cv:9.333,cm:"Se recomienda identificar si los árboles medidos son rebrotes (determina recuperación de biomasa) y definir elementos para determinar degradación forestal. Se sugiere usar letra más grande y menos texto en la presentación."},
+  {e:"David Sinué Luna Pérez",pr:"Adaptación y resiliencia de agroecosistemas en zonas periurbanas de Xalapa.",pg:"6to. DET",i:3.6,j:3.6,o:3.8,m:4.2,a:3.0,d:0.0,mp:3.033,mg:3.171,cv:9.8,cm:"Se debe explicar por qué se hizo análisis de suelo (¿evidencia de manejo o característica del lugar?) y definir términos académicos nuevos. Se sugiere elaborar materiales didácticos sobre el suelo como ecosistema."},
+  {e:"Diana Elena Gómez Reyna",pr:"Conservación del patrimonio biocultural olmeca a través del enfoque de la ecología del paisaje.",pg:"2do. DET",i:3.625,j:3.875,o:3.875,m:3.571,a:1.25,d:0.0,mp:2.699,mg:2.982,cv:9.625,cm:"Se sugiere incorporar la ecología cultural e histórica a los métodos de ecología del paisaje y explicar cómo la información beneficiará a las poblaciones locales para que sean sujetos y no objetos. Es necesario mejorar el orden de la presentación y la integración del proyecto, ya que se percibió confuso y con riesgos para su ejecución."},
+  {e:"Elizabeth Fuentes Romero",pr:"Almacén y regulación de carbono en el bosque mesófilo de montaña en la Sierra Gorda de Querétaro.",pg:"8to. DET",i:4.0,j:4.0,o:4.0,m:4.0,a:4.333,d:4.0,mp:4.056,mg:3.940,cv:9.2,cm:"Se debe indicar la propiedad de los bosques y el historial de manejo, poner títulos a tablas y figuras, y ocupar menos texto en las diapositivas."},
+  {e:"Esmeralda de los Ángeles Zamora Saldaña",pr:"Apropiación de proyectos de carbono forestal: una guía comunitaria de cuantificación de CO2.",pg:"1ro. MET",i:4.083,j:3.833,o:3.583,m:3.5,a:1.167,d:0.5,mp:2.778,mg:2.857,cv:9.643,cm:'Debe mejorar el diseño visual de las diapositivas (evitar saturación, usar plantilla oficial) y resumir la introducción para enfocar el tiempo en la metodología. Se sugiere no mezclar herramientas metodológicas con los objetivos y explicitar el posicionamiento ético y epistemológico frente a la mercantilización de los bonos de carbono. Es importante definir qué se entiende por "comunidad", dar un papel primordial a los dueños de los bosques (no a las certificadoras) y sustentar la crítica a REDD con bibliografía.'},
+  {e:"Esteban Francisco Ventura",pr:"El bosque urbano en Xalapa, Veracruz: Diversidad vegetal, servicios ecosistémicos y factores que afectan su cobertura.",pg:"6to. DET",i:4.333,j:4.333,o:4.333,m:4.667,a:4.0,d:3.667,mp:4.222,mg:3.964,cv:9.857,cm:"Se sugiere ampliar el análisis de servicios ambientales (protección de laderas, infiltración) para un enfoque más integrador e incluir un análisis interpretativo de las entrevistas a actores sociales. Se debe explicar la aportación del trabajo frente a otros publicados."},
+  {e:"Gabriel Castro Masegosa",pr:"El sistema biocultural chile criollo o tres lomos (Capsicum annuum var. annuum) en una microregión del centro de Veracruz.",pg:"6to. DET",i:4.2,j:3.4,o:4.2,m:4.2,a:3.0,d:3.4,mp:3.733,mg:3.449,cv:9.6,cm:'Se recomienda elaborar un esquema síntesis de los elementos bioculturales y sistematizar la información dispersa. Es importante entrelazar el posicionamiento ético-político con la metodología, desarrollar un lugar de enunciación crítico e incluir un apartado sobre los retos y lo que "no funcionó" en la investigación.'},
+  {e:"Gabriela Galindo González",pr:"Efecto de factores antropogénicos sobre la distribución geográfica de murciélagos cavernícolas en el sureste de México.",pg:"6to. DET",i:3.75,j:3.75,o:4.0,m:4.0,a:4.0,d:3.0,mp:3.75,mg:3.679,cv:9.75,cm:"Se recomienda explicar la aportación del trabajo y manejar la información desagregada en varias diapositivas para evitar la saturación."},
+  {e:"Guadalupe Torres Martínez",pr:"Influencia de la gobernanza sobre el manejo y conservación de Dasylirion acrptrichum (Asparagaceae), especie utilizada en fiestas patronales de Veracruz.",pg:"6to. DET",i:4.25,j:4.25,o:4.0,m:3.75,a:2.5,d:1.25,mp:3.333,mg:3.5,cv:10.0,cm:"Se debe aclarar el método de análisis de datos y documentar las reglas locales tanto de los dueños como de quienes colectan."},
+  {e:"Hector David Jimeno Sevilla",pr:"Los insectos comestibles de la Sierra de Zongolica, Ver., su diversidad y manejo como parte de los sistemas agroforestales regionales.",pg:"8to. DET",i:4.0,j:4.0,o:4.2,m:4.2,a:4.0,d:4.0,mp:4.067,mg:null,cv:9.8,cm:"Se sugiere indicar con claridad las publicaciones generadas y cuidar el tiempo de presentación."},
+  {e:"Isis Io Ortiz Vela",pr:"Factores ambientales que afectan la germinación y establecimiento de plántulas de árboles del bosque de Fagus grandifolia subsp. mexicana.",pg:"4to. DET",i:3.5,j:4.0,o:4.0,m:3.75,a:3.75,d:1.333,mp:3.389,mg:3.792,cv:9.5,cm:"Se recomienda mejorar la comunicación visual (escalas en semillas, títulos visibles en gráficas) y reducir la cantidad de texto en las diapositivas, separando la información densa."},
+  {e:"Jaime Francisco Camelo Vidal",pr:"Análisis del conocimiento local sobre los recursos hídricos en las comunidades del municipio de Tlaquilpa, Veracruz.",pg:"6to. DET",i:4.0,j:4.0,o:4.0,m:3.75,a:3.75,d:2.0,mp:3.583,mg:3.872,cv:9.6,cm:"Se recomienda incluir el análisis del contexto histórico (pérdida de manantiales, cambios desde la apertura comercial) y comparar con estudios de cuencas similares. Es necesario aclarar la metodología de análisis de datos y los procedimientos éticos con los actores."},
+  {e:"Jhonny Daniel Duarte Lefosse",pr:"Impacto del cambio de uso de suelo en el carbono almacenado en tres bosques templados de Veracruz.",pg:"6to. DET",i:4.0,j:4.333,o:4.333,m:4.333,a:4.0,d:1.667,mp:3.944,mg:3.917,cv:9.667,cm:"Se sugiere explicar la elección del área de estudio y su representatividad para generalizar los resultados. Se recomienda incorporar análisis histórico de los cambios de uso de suelo y aclarar cómo los resultados contribuyen a la gestión forestal y a las políticas de conservación."},
+  {e:"José Manuel Rodríguez Málaga",pr:"Diversidad y distribución de hongos micorrízicos arbusculares en sistemas agroforestales del centro de Veracruz.",pg:"3ro. MET",i:3.5,j:3.5,o:3.75,m:3.75,a:3.25,d:1.5,mp:3.25,mg:3.528,cv:9.75,cm:"Se recomienda contrastar los resultados con los de sistemas convencionales y hacer explícita la aportación del trabajo. Es importante desarrollar la discusión de los resultados relacionados con las especies de plantas y aclarar los criterios de selección de los sistemas agroforestales estudiados."},
+  {e:"José Rodrigo Carral Dominguez",pr:"Análisis de la diversidad de mamíferos medianos y grandes en sistemas agropecuarios de Veracruz.",pg:"4to. DET",i:4.5,j:4.333,o:4.5,m:4.5,a:4.333,d:2.5,mp:4.111,mg:4.333,cv:9.833,cm:"Se sugiere ampliar el análisis de la incidencia de los factores de paisaje sobre la diversidad de mamíferos y discutir las implicaciones de los resultados para el manejo ganadero sostenible. Es necesario aclarar la metodología de análisis de datos y los procedimientos éticos."},
+  {e:"Julio Cesar Pérez Hernández",pr:"Caracterización del sistema biocultural del maíz nativo (Zea mays L.) y diagnóstico participativo de sus principales amenazas en el municipio de Tlaquilpa, Veracruz.",pg:"2do. MET",i:3.5,j:3.25,o:3.5,m:3.0,a:2.75,d:1.5,mp:2.917,mg:3.233,cv:9.5,cm:"Se recomienda fortalecer el marco conceptual y analítico sobre el maíz nativo y ampliar la discusión sobre las amenazas identificadas y las estrategias de conservación posibles. Es importante incluir la voz de las comunidades en los resultados y discusión."},
+  {e:"Karla María Alba Robles",pr:"Identificación de microplásticos en tejido muscular de Oreochromis niloticus (tilapia) provenientes de la Presa Manuel Ávila Camacho, Puebla.",pg:"3ro. MET",i:2.857,j:3.286,o:3.0,m:2.857,a:2.714,d:1.571,mp:2.714,mg:2.894,cv:9.286,cm:"Se recomienda aclarar los métodos de identificación de microplásticos y fortalecer la discusión sobre las implicaciones para la salud pública. Es importante incluir un análisis comparativo con otros estudios y aclarar los criterios de selección del área de estudio."},
+  {e:"Laura Emmanuelle Jarri",pr:"Caracterización de la diversidad florística y estructura de comunidades vegetales en diferentes sistemas de manejo en el centro de Veracruz.",pg:"4to. DET",i:4.0,j:3.5,o:4.0,m:4.0,a:3.5,d:1.0,mp:3.333,mg:3.722,cv:9.5,cm:"Se recomienda fortalecer el análisis estadístico y la discusión de los resultados. Es necesario aclarar los criterios de selección de los sistemas de manejo estudiados y hacer explícita la aportación del trabajo respecto a estudios previos."},
+  {e:"Lizbeth Márquez Pérez",pr:"Análisis de la gestión comunitaria del agua en comunidades indígenas de la Sierra de Zongolica, Veracruz.",pg:"2do. MET",i:2.75,j:2.5,o:3.0,m:2.75,a:2.25,d:1.75,mp:2.5,mg:2.556,cv:9.0,cm:"Se sugiere fortalecer el marco teórico sobre la gestión comunitaria del agua y ampliar la revisión de literatura sobre casos similares. Es importante incluir un análisis de los factores que facilitan o dificultan la gestión comunitaria efectiva."},
+  {e:"Lucio Pérez Pérez",pr:"Impacto del cambio climático en la distribución potencial de especies arbóreas de importancia ecológica en México.",pg:"3ro. MET",i:3.0,j:3.25,o:3.0,m:3.5,a:2.75,d:1.5,mp:2.833,mg:3.083,cv:9.5,cm:"Se recomienda aclarar los criterios de selección de las especies estudiadas y fortalecer la discusión sobre las implicaciones para la conservación. Es necesario incluir un análisis de incertidumbre en los modelos y comparar con estudios similares."},
+  {e:"Luisa Margarita Rodríguez Flores",pr:"Caracterización etnobotánica y propiedades funcionales de variedades locales de frijol (Phaseolus vulgaris L.) en comunidades del centro de Veracruz.",pg:"4to. DET",i:4.0,j:4.0,o:4.0,m:3.75,a:3.5,d:1.5,mp:3.5,mg:3.762,cv:9.5,cm:"Se sugiere ampliar el análisis de la diversidad de usos y fortalecer la discusión sobre las implicaciones para la seguridad alimentaria. Es importante incluir un análisis comparativo con variedades comerciales y aclarar los métodos de análisis nutricional."},
+  {e:"Manuel de Jesús Cameras Flores",pr:"Evaluación del potencial de restauración ecológica en áreas degradadas mediante el uso de hongos micorrízicos arbusculares.",pg:"3ro. MET",i:3.5,j:3.5,o:3.5,m:3.5,a:3.0,d:2.0,mp:3.167,mg:3.333,cv:9.5,cm:"Se recomienda fortalecer el análisis estadístico y la discusión sobre el potencial de aplicación de los resultados en programas de restauración. Es necesario aclarar los criterios de selección de las especies de hongos y las áreas de estudio."},
+  {e:"María José Graniel Izquierdo",pr:"Efectos de los sistemas de cultivo de vainilla (Vanilla planifolia Jacks) sobre la diversidad microbiana del suelo en el Totonacapan veracruzano.",pg:"3ro. MET",i:4.25,j:4.25,o:4.25,m:4.25,a:4.0,d:2.25,mp:3.875,mg:4.208,cv:9.8,cm:"Es preocupante la falta de datos de dos sistemas a comparar; se debe aclarar la separación de sitios y tratamientos, y explicar mejor el tiempo de permanencia de glifosato/paraquat en el suelo. Las entrevistas con los dueños de los sitios se consideran fundamentales."},
+  {e:"Olivia Reyna Sánchez",pr:"Análisis metabolómico de tres especies del género Vanilla y su actividad antiproliferativa en células cancerosas de próstata y mama.",pg:"8to. DET",i:4.2,j:3.8,o:3.8,m:3.8,a:3.2,d:2.75,mp:3.592,mg:3.767,cv:9.6,cm:"Se requiere mejorar el análisis estadístico (comparar promedios, explicar PCA) y revisar la interpretación de los mapas de color. Se sugiere trabajar la comunicación para audiencias no especializadas en química y discutir los aportes para la salud de las personas."},
+  {e:"Paola Andrea Velásquez Noriega",pr:"Estado de conservación, distribución e interacciones con fauna de las especies del género Puya (Bromeliaceae) en el Neotrópico.",pg:"6to. DET",i:4.5,j:4.5,o:4.5,m:4.5,a:5.0,d:2.5,mp:4.25,mg:4.667,cv:10.0,cm:null},
+  {e:"Rafael Vega Gassos",pr:"Efecto de la antropización sobre la diversidad de epífitas vasculares y su preferencia de hospedero en encinar tropical y vegetación derivada en el centro de Veracruz.",pg:"3ro. MET",i:4.375,j:3.286,o:4.625,m:4.25,a:4.125,d:1.75,mp:3.735,mg:4.173,cv:9.625,cm:"Se debe aclarar el método de muestreo (si fue subiendo a árboles o desde abajo) y hacer explícita la aportación del estudio respecto a otros similares. Se sugiere mejorar el orden de los resultados, ampliar su discusión (que se percibió superficial) y alzar el nivel de voz al presentar."},
+  {e:"Rubí Marisol Franco José",pr:"Mujeres, abejas y comunidad: prácticas y saberes sobre apicultura y meliponicultura en los municipios de Emiliano Zapata, Xalapa y Xico, Veracruz a partir de la experiencia en escuelas de campo de un programa federal.",pg:"2do. MET",i:4.0,j:4.143,o:4.0,m:4.0,a:1.714,d:1.143,mp:3.167,mg:3.524,cv:9.571,cm:'Es necesario presentar datos concretos sobre el número de entrevistas y profundizar en los fundamentos teóricos y epistémicos de la Investigación Acción Participativa (IAP). Se debe fortalecer el marco teórico sobre "cuidados" (economía feminista), diferenciando claramente entre trabajo reproductivo y reproducción sexual, y buscar vinculación con colectivos como INANA.'},
+  {e:"Tania Marisol Susan Tepetlan",pr:"Diversidad genética y funcional de tres especies arbóreas con importancia biocultural en paisajes fragmentados: un estudio comparativo en entornos de manejo y conservación diferencial.",pg:"4to. DET",i:4.5,j:4.5,o:4.5,m:4.5,a:4.5,d:2.5,mp:4.167,mg:4.5,cv:10.0,cm:"Se sugiere defender más el uso de Inteligencia Artificial para el análisis de palabras, agregar métodos de validación en la clasificación de coberturas y realizar un análisis histórico de cobertura arbórea."},
+  {e:"Teresa Ruiz Olvera",pr:"Redes de interacción planta-visitadores florales en el paisaje biocultural del Totonacapan.",pg:"4to. DET",i:4.0,j:4.167,o:4.167,m:4.167,a:4.0,d:2.0,mp:3.75,mg:4.167,cv:9.0,cm:"Se pide mayor rigor estadístico y se advierte que la inclusión del paisaje biocultural (milpa, vainillal, cítricos) añade complejidad que debe manejarse con cuidado en el análisis y discusión."},
+];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const DIMS = ['i','j','o','m','a','d'];
+const DL = {i:'Introducción',j:'Justificación',o:'Objetivos',m:'Método',a:'Análisis',d:'Discusión'};
+const avg = (arr,k) => { const v=arr.filter(x=>x[k]!=null); return v.length ? v.reduce((s,x)=>s+x[k],0)/v.length : null; };
+const fmt = v => v!=null ? v.toFixed(2) : '—';
+const sc  = v => v==null?'#94a3b8':v>=4?'#10b981':v>=3?'#fbbf24':'#ef4444';
+const sl  = v => v==null?'—':v>=4?'Destacado':v>=3?'Satisfactorio':'A mejorar';
+const cc  = v => v>=9.5?'#10b981':v>=8?'#fbbf24':'#ef4444';
+
+// ── Design tokens ────────────────────────────────────────────────────────────
+const BG   = 'linear-gradient(145deg,#064e3b 0%,#065f46 55%,#047857 100%)';
+const DARK = '#065f46';
+const card = {background:'rgba(6,78,59,0.6)',backdropFilter:'blur(18px)',borderRadius:16,padding:'1.1rem',border:'1px solid rgba(167,243,208,0.15)',position:'relative'};
+
+// ── Derived constants ────────────────────────────────────────────────────────
+const RANKED = [...DATA].sort((a,b)=>(a.mg==null)-(b.mg==null)||(b.mg??0)-(a.mg??0));
+const PWD_MAP = Object.fromEntries(RANKED.map((s,i)=>[String(i+1).padStart(3,'0'),s]));
+const PROGRAMS = ['Todos',...[...new Set(DATA.map(d=>d.pg))].sort()];
+const GRP_AVG  = {...Object.fromEntries(DIMS.map(d=>[d,avg(DATA,d)])),mg:avg(DATA.filter(s=>s.mg!=null),'mg'),mp:avg(DATA,'mp'),cv:avg(DATA,'cv')};
+const PROG_STATS = PROGRAMS.filter(p=>p!=='Todos').map(pg=>{
+  const m=DATA.filter(s=>s.pg===pg), v=m.filter(s=>s.mg!=null);
+  return {pg,n:m.length,mg:avg(v,'mg'),mp:avg(m,'mp'),cv:avg(m,'cv'),
+    ...Object.fromEntries(DIMS.map(d=>[d,avg(m,d)])),
+    hi:v.filter(s=>s.mg>=4).length, lo:v.filter(s=>s.mg<3).length};
+});
+const DIST = [{r:'< 2.5',mn:0,mx:2.5,c:'#ef4444'},{r:'2.5–3',mn:2.5,mx:3,c:'#f97316'},{r:'3–3.5',mn:3,mx:3.5,c:'#fbbf24'},{r:'3.5–4',mn:3.5,mx:4,c:'#34d399'},{r:'≥ 4',mn:4,mx:5.1,c:'#10b981'}]
+  .map(b=>({...b,n:DATA.filter(s=>s.mg!=null&&s.mg>=b.mn&&s.mg<b.mx).length}));
+
+// ── Tiny shared components ───────────────────────────────────────────────────
+const TabBar = ({tabs,active,onChange}) => (
+  <div style={{display:'flex',gap:4,background:'rgba(0,0,0,0.25)',borderRadius:10,padding:3,flexWrap:'wrap'}}>
+    {tabs.map(t=>(
+      <button key={t.id} onClick={()=>onChange(t.id)}
+        style={{padding:'0.38rem 0.9rem',borderRadius:7,border:'none',cursor:'pointer',fontFamily:'sans-serif',fontSize:'0.75rem',fontWeight:600,transition:'all .18s',
+          background:active===t.id?'rgba(52,211,153,0.22)':'transparent',color:active===t.id?'#34d399':'#a7f3d0',borderBottom:active===t.id?'2px solid #10b981':'2px solid transparent'}}>
+        {t.label}
+      </button>
+    ))}
+  </div>
+);
+
+const Pill = ({label,val,color,sub=''}) => (
+  <div style={{...card,textAlign:'center',padding:'0.85rem 0.5rem',border:`2px solid ${color}33`}}>
+    <div style={{fontSize:'1.6rem',fontWeight:700,color,lineHeight:1}}>{val}</div>
+    <div style={{fontFamily:'sans-serif',fontSize:'0.62rem',color:'#a7f3d0',marginTop:3,textTransform:'uppercase',letterSpacing:'0.04em',lineHeight:1.3}}>{label}</div>
+    {sub && <div style={{fontFamily:'sans-serif',fontSize:'0.68rem',color,marginTop:2}}>{sub}</div>}
+  </div>
+);
+
+const DimBar = ({d,val,ref,showRef}) => (
+  <div style={{...card,padding:'0.8rem 0.6rem',textAlign:'center',border:`2px solid ${sc(val)}33`}}>
+    <div style={{fontSize:'1.35rem',fontWeight:700,color:sc(val)}}>{fmt(val)}</div>
+    <div style={{fontFamily:'sans-serif',fontSize:'0.62rem',color:'#a7f3d0',marginTop:2,lineHeight:1.3}}>{DL[d]}</div>
+    <div style={{margin:'5px 0 0',height:4,background:'rgba(167,243,208,0.1)',borderRadius:2,overflow:'hidden'}}>
+      <div style={{width:`${((val??0)/5)*100}%`,height:'100%',background:sc(val),borderRadius:2}}/>
+    </div>
+    {showRef && ref!=null && (
+      <div style={{fontFamily:'sans-serif',fontSize:'0.6rem',fontWeight:700,marginTop:3,
+        color:(val??0)-(ref??0)>=0?'#10b981':'#ef4444'}}>
+        {(val??0)-(ref??0)>=0?'+':''}{((val??0)-(ref??0)).toFixed(2)}
+      </div>
+    )}
+  </div>
+);
+
+const SegBar = ({label,options,value,onChange}) => (
+  <div style={{display:'flex',alignItems:'center',gap:'0.5rem',flexWrap:'wrap'}}>
+    <span style={{fontFamily:'sans-serif',fontSize:'0.7rem',color:'#a7f3d0',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em',flexShrink:0}}>{label}:</span>
+    {options.map(o=>(
+      <button key={o} onClick={()=>onChange(o)}
+        style={{padding:'0.25rem 0.65rem',borderRadius:6,border:`1px solid ${value===o?'#10b981':'rgba(167,243,208,0.2)'}`,cursor:'pointer',
+          background:value===o?'rgba(52,211,153,0.2)':'transparent',color:value===o?'#34d399':'#a7f3d0',
+          fontFamily:'sans-serif',fontSize:'0.72rem',fontWeight:value===o?700:400,transition:'all .15s'}}>
+        {o}
+      </button>
+    ))}
+  </div>
+);
+
+// ── LOGIN / GATE ─────────────────────────────────────────────────────────────
+function LoginGate({onTeacher,onStudent}) {
+  const [mode,setMode] = useState(null);
+  const [pwd,setPwd]   = useState('');
+  const [err,setErr]   = useState(false);
+  const [show,setShow] = useState(false);
+  const [tries,setTries] = useState(0);
+  const pad = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+
+  const login = () => {
+    if(mode==='teacher'){
+      if(pwd==='POSG2025'){onTeacher();}
+      else shake();
+    } else {
+      const s=PWD_MAP[pwd.padStart(3,'0')];
+      if(s){onStudent(s,parseInt(pwd,10));}
+      else shake();
+    }
+  };
+  const shake = () => {setTries(t=>t+1);setErr(true);setTimeout(()=>setErr(false),700);setPwd('');};
+
+  return (
+    <div style={{minHeight:'100vh',background:BG,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'2rem',gap:'1.5rem'}}>
+      <div style={{textAlign:'center'}}>
+        <div style={{fontSize:'2.8rem',marginBottom:8}}>🌿</div>
+        <h1 style={{fontSize:'1.9rem',fontWeight:700,background:'linear-gradient(135deg,#34d399,#10b981)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',margin:'0 0 4px'}}>SIP · Posgrado</h1>
+        <p style={{fontFamily:'sans-serif',fontSize:'0.82rem',color:'#a7f3d0',margin:0}}>Sistema de Evaluación · Acceso seguro</p>
+      </div>
+      {!mode ? (
+        <div style={{display:'flex',flexDirection:'column',gap:'0.85rem',width:'100%',maxWidth:340}}>
+          {[{id:'student',icon:'🎓',t:'Soy estudiante',s:'Ver mi evaluación personal · clave 3 dígitos'},
+            {id:'teacher',icon:'👩‍🏫',t:'Soy docente',s:'Dashboard completo del grupo'}].map(r=>(
+            <button key={r.id} onClick={()=>setMode(r.id)}
+              style={{...card,padding:'1.1rem 1.3rem',cursor:'pointer',textAlign:'left',display:'flex',alignItems:'center',gap:'1rem',border:`2px solid ${r.id==='student'?'rgba(52,211,153,0.4)':'rgba(167,243,208,0.2)'}`,transition:'all .2s'}}
+              onMouseEnter={e=>{e.currentTarget.style.background='rgba(52,211,153,0.18)';}}
+              onMouseLeave={e=>{e.currentTarget.style.background='rgba(6,78,59,0.6)';}}>
+              <span style={{fontSize:'1.8rem'}}>{r.icon}</span>
+              <div><div style={{fontWeight:700,fontSize:'0.95rem',color:'#f8fafc'}}>{r.t}</div>
+              <div style={{fontFamily:'sans-serif',fontSize:'0.72rem',color:'#a7f3d0',marginTop:2}}>{r.s}</div></div>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div style={{width:'100%',maxWidth:310,display:'flex',flexDirection:'column',gap:'0.85rem'}}>
+          <button onClick={()=>{setMode(null);setPwd('');setErr(false);}} style={{background:'none',border:'none',cursor:'pointer',color:'#6ee7b7',fontFamily:'sans-serif',fontSize:'0.78rem',textAlign:'left',padding:0}}>← Volver</button>
+          <div style={{...card,border:`2px solid ${err?'#ef4444':'rgba(52,211,153,0.3)'}`,padding:'1.6rem',transition:'border-color .2s'}}>
+            <div style={{textAlign:'center',marginBottom:'1.1rem'}}>
+              <div style={{fontSize:'1.7rem',marginBottom:5}}>{mode==='student'?'🎓':'👩‍🏫'}</div>
+              <h2 style={{fontSize:'1rem',fontWeight:700,margin:'0 0 4px',color:'#f8fafc'}}>{mode==='student'?'Tu clave de acceso':'Acceso docente'}</h2>
+              <p style={{fontFamily:'sans-serif',fontSize:'0.72rem',color:'#a7f3d0',margin:0}}>
+                {mode==='student'?'Ingresa tu posición en el ranking (3 dígitos)':'Contraseña de administrador'}
+              </p>
+            </div>
+            <div style={{background:DARK,borderRadius:10,padding:'0.75rem',textAlign:'center',marginBottom:'0.9rem',
+              fontFamily:'monospace',fontSize:mode==='student'?'2rem':'1.4rem',fontWeight:700,color:'#34d399',letterSpacing:'0.3em',
+              minHeight:50,border:`2px solid ${err?'#ef4444':'rgba(167,243,208,0.12)'}`,transition:'border-color .2s',
+              animation:err?'shake 0.5s ease':'none'}}>
+              {mode==='student' ? (pwd||'').padEnd(3,'_') : (show?(pwd||'·····'):'·'.repeat(Math.max(5,pwd.length)))}
+            </div>
+            {mode==='student' && (
+              <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'0.35rem',marginBottom:'0.85rem'}}>
+                {pad.map((d,i)=>(
+                  <button key={i} onClick={()=>{ if(!d)return; if(d==='⌫'){setPwd(p=>p.slice(0,-1));return;} if(pwd.length<3)setPwd(p=>p+d); }}
+                    style={{padding:'0.75rem',borderRadius:8,border:'1px solid rgba(167,243,208,0.18)',cursor:d?'pointer':'default',
+                      background:d==='⌫'?'rgba(239,68,68,0.12)':d?'rgba(52,211,153,0.1)':'transparent',
+                      color:d==='⌫'?'#fca5a5':'#d1fae5',fontSize:'1.1rem',fontWeight:700,fontFamily:'monospace',transition:'all .1s'}}
+                    onMouseEnter={e=>{if(d)e.currentTarget.style.background=d==='⌫'?'rgba(239,68,68,0.22)':'rgba(52,211,153,0.2)';}}
+                    onMouseLeave={e=>{if(d)e.currentTarget.style.background=d==='⌫'?'rgba(239,68,68,0.12)':'rgba(52,211,153,0.1)';}}>
+                    {d}
+                  </button>
+                ))}
+              </div>
+            )}
+            {mode==='teacher' && (
+              <div style={{position:'relative',marginBottom:'0.85rem'}}>
+                <input type={show?'text':'password'} value={pwd} onChange={e=>setPwd(e.target.value)}
+                  onKeyDown={e=>e.key==='Enter'&&login()} placeholder="Contraseña"
+                  style={{width:'100%',padding:'0.65rem 2.5rem 0.65rem 0.9rem',background:DARK,border:'1px solid rgba(167,243,208,0.22)',borderRadius:9,color:'#f8fafc',fontSize:'1rem',fontFamily:'monospace',letterSpacing:'0.12em'}}/>
+                <button onClick={()=>setShow(s=>!s)} style={{position:'absolute',right:9,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'#6ee7b7',fontFamily:'sans-serif',fontSize:'0.7rem'}}>
+                  {show?'Ocultar':'Ver'}
+                </button>
+              </div>
+            )}
+            {err && <p style={{fontFamily:'sans-serif',fontSize:'0.72rem',color:'#f87171',textAlign:'center',margin:'0 0 0.6rem'}}>
+              Clave incorrecta.{tries>=3&&mode==='student'?' Tu clave es tu posición (001–039)':''}
+            </p>}
+            <button onClick={login} disabled={pwd.length<(mode==='student'?3:1)}
+              style={{width:'100%',padding:'0.72rem',borderRadius:9,border:'none',fontFamily:'sans-serif',fontWeight:700,fontSize:'0.88rem',transition:'all .2s',
+                cursor:pwd.length>=(mode==='student'?3:1)?'pointer':'not-allowed',
+                background:pwd.length>=(mode==='student'?3:1)?'linear-gradient(135deg,#10b981,#059669)':'rgba(255,255,255,0.06)',
+                color:pwd.length>=(mode==='student'?3:1)?'#fff':'#4b5563'}}>
+              Ingresar →
+            </button>
+          </div>
+          {mode==='student' && <p style={{fontFamily:'sans-serif',fontSize:'0.7rem',color:'rgba(167,243,208,0.45)',textAlign:'center',lineHeight:1.6}}>
+            Tu clave = tu posición en el ranking.<br/>Ej: posición 5 → <strong style={{color:'#6ee7b7'}}>005</strong>
+          </p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── STUDENT PERSONAL VIEW ────────────────────────────────────────────────────
+function StudentView({student,rank,onLogout}) {
+  const [cmp,setCmp]   = useState(false);
+  const [seg,setSeg]   = useState('Todos');
+  const segs           = PROGRAMS;
+  const segData        = seg==='Todos' ? DATA : DATA.filter(s=>s.pg===seg);
+  const segAvg         = {...Object.fromEntries(DIMS.map(d=>[d,avg(segData,d)])),mg:avg(segData.filter(s=>s.mg!=null),'mg')};
+  const valid          = DATA.filter(s=>s.mg!=null);
+  const pct            = student.mg!=null ? Math.round(valid.filter(s=>s.mg<=student.mg).length/valid.length*100) : null;
+  const radar          = DIMS.map(d=>({m:DL[d],t:+(student[d]??0).toFixed(2),r:+(segAvg[d]??0).toFixed(2)}));
+  const bars           = DIMS.map(d=>({n:DL[d].slice(0,5),t:+(student[d]??0).toFixed(2),...(cmp?{r:+(segAvg[d]??0).toFixed(2)}:{})}));
+
+  return (
+    <div style={{minHeight:'100vh',background:BG,padding:'1.25rem 1.5rem',overflowX:'hidden'}}>
+      {/* Header bar */}
+      <div style={{maxWidth:1040,margin:'0 auto 1rem'}}>
+        <div style={{...card,padding:'0.9rem 1.3rem',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'0.75rem'}}>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontFamily:'sans-serif',fontSize:'0.6rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:3}}>Mi evaluación personal</div>
+            <h1 style={{fontSize:'1.35rem',fontWeight:700,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',background:'linear-gradient(135deg,#34d399,#10b981)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent',margin:0}}>{student.e}</h1>
+            <div style={{fontFamily:'sans-serif',fontSize:'0.72rem',color:'#6ee7b7',marginTop:2}}>{student.pg}</div>
+          </div>
+          <div style={{display:'flex',gap:6,flexShrink:0}}>
+            <button onClick={()=>setCmp(!cmp)}
+              style={{padding:'0.42rem 0.85rem',borderRadius:8,border:`1px solid ${cmp?'#fbbf24':'rgba(167,243,208,0.3)'}`,cursor:'pointer',
+                background:cmp?'rgba(251,191,36,0.12)':'transparent',color:cmp?'#fbbf24':'#d1fae5',fontFamily:'sans-serif',fontWeight:600,fontSize:'0.73rem',display:'flex',alignItems:'center',gap:4}}>
+              <GitCmp size={13}/>{cmp?'Comparando':'Comparar'}
+            </button>
+            <button onClick={onLogout}
+              style={{padding:'0.42rem 0.85rem',borderRadius:8,border:'1px solid rgba(239,68,68,0.35)',cursor:'pointer',background:'rgba(239,68,68,0.1)',color:'#fca5a5',fontFamily:'sans-serif',fontWeight:600,fontSize:'0.73rem',display:'flex',alignItems:'center',gap:4}}>
+              <LogOut size={13}/>Salir
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style={{maxWidth:1040,margin:'0 auto',display:'flex',flexDirection:'column',gap:'0.9rem'}}>
+
+        {/* Segmentation strip */}
+        {cmp && (
+          <div style={{...card,padding:'0.7rem 1rem'}}>
+            <SegBar label="Comparar vs" options={segs} value={seg} onChange={setSeg}/>
+          </div>
+        )}
+
+        {/* KPIs */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'0.7rem'}}>
+          <Pill label="Media General"   val={fmt(student.mg)}  color={sc(student.mg)}    sub={sl(student.mg)}/>
+          <Pill label="Media Ponderada" val={fmt(student.mp)}  color="#34d399"/>
+          <Pill label="Convivencia"     val={fmt(student.cv)}  color={cc(student.cv??0)} sub="/10"/>
+          <Pill label="Posición ranking" val={`#${rank}`}       color="#fbbf24"           sub={`de ${RANKED.length}`}/>
+        </div>
+
+        {/* Percentile */}
+        {pct!=null && (
+          <div style={{...card,padding:'0.85rem 1.2rem'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:6}}>
+              <span style={{fontFamily:'sans-serif',fontSize:'0.7rem',color:'#a7f3d0',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}}>Posición en el grupo</span>
+              <span style={{fontFamily:'sans-serif',fontSize:'0.8rem',fontWeight:700,color:'#34d399'}}>Superaste al {pct}% del grupo</span>
+            </div>
+            <div style={{height:11,background:'rgba(167,243,208,0.1)',borderRadius:6,overflow:'hidden'}}>
+              <div style={{width:`${pct}%`,height:'100%',background:`linear-gradient(90deg,${sc(student.mg)},#34d399)`,borderRadius:6,transition:'width 0.8s ease'}}/>
+            </div>
+            <div style={{display:'flex',justifyContent:'space-between',fontFamily:'sans-serif',fontSize:'0.6rem',color:'#6ee7b7',marginTop:3}}>
+              <span>0%</span><span>50%</span><span>100%</span>
+            </div>
+          </div>
+        )}
+
+        {/* 6 dimension bars */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:'0.6rem'}}>
+          {DIMS.map(d=><DimBar key={d} d={d} val={student[d]} ref={segAvg[d]} showRef={cmp}/>)}
+        </div>
+
+        {/* Charts */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.9rem'}}>
+          <div style={card}>
+            <p style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.7rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.04em',margin:'0 0 8px'}}>Perfil radial{cmp?<span style={{color:'#fbbf24'}}> vs {seg}</span>:''}</p>
+            <ResponsiveContainer width="100%" height={230}>
+              <RadarChart data={radar}>
+                <PolarGrid stroke="rgba(167,243,208,0.17)"/>
+                <PolarAngleAxis dataKey="m" tick={{fill:'#d1fae5',fontSize:10,fontFamily:'sans-serif'}}/>
+                <PolarRadiusAxis angle={90} domain={[0,5]} tick={{fill:'#a7f3d0',fontSize:8}} tickCount={6}/>
+                {cmp && <Radar name={seg} dataKey="r" stroke="#fbbf24" fill="#fbbf24" fillOpacity={0.1} strokeWidth={1.5} strokeDasharray="4 2"/>}
+                <Radar name="Tú" dataKey="t" stroke="#10b981" fill="#10b981" fillOpacity={0.3} strokeWidth={2}/>
+                {cmp && <Legend wrapperStyle={{fontFamily:'sans-serif',fontSize:'0.7rem',color:'#d1fae5'}}/>}
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+          <div style={card}>
+            <p style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.7rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.04em',margin:'0 0 8px'}}>Calificación por sección</p>
+            <ResponsiveContainer width="100%" height={230}>
+              <BarChart data={bars} margin={{bottom:5,left:-10}}>
+                <XAxis dataKey="n" tick={{fill:'#d1fae5',fontSize:9,fontFamily:'sans-serif'}}/>
+                <YAxis domain={[0,5]} tick={{fill:'#a7f3d0',fontSize:8}} tickCount={6}/>
+                <Tooltip contentStyle={{background:DARK,border:'1px solid rgba(167,243,208,0.2)',borderRadius:8,fontFamily:'sans-serif',fontSize:'0.75rem'}} cursor={{fill:'rgba(167,243,208,0.05)'}}/>
+                {cmp && <Legend wrapperStyle={{fontFamily:'sans-serif',fontSize:'0.7rem'}}/>}
+                <defs><linearGradient id="sg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#34d399"/><stop offset="100%" stopColor="#10b981"/></linearGradient></defs>
+                <Bar dataKey="t" name="Tu calificación" fill="url(#sg1)" radius={[5,5,0,0]}/>
+                {cmp && <Bar dataKey="r" name={seg} fill="#fbbf2455" radius={[5,5,0,0]}/>}
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Numeric comparison strip */}
+        {cmp && (
+          <div style={{...card,background:'rgba(251,191,36,0.06)',border:'1px solid rgba(251,191,36,0.2)',padding:'0.9rem 1.1rem'}}>
+            <p style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.7rem',color:'#fbbf24',textTransform:'uppercase',letterSpacing:'0.04em',margin:'0 0 0.7rem'}}>Comparación numérica vs {seg}</p>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'0.45rem'}}>
+              {[...DIMS.map(d=>({l:DL[d],mine:student[d],ref:segAvg[d]})),
+                {l:'Media Ponderada',mine:student.mp,ref:avg(segData,'mp')},
+                {l:'Media General',mine:student.mg,ref:segAvg.mg},
+              ].map((row,i)=>{
+                const diff = row.mine!=null&&row.ref!=null ? row.mine-row.ref : null;
+                return (
+                  <div key={i} style={{background:DARK,borderRadius:8,padding:'0.5rem 0.7rem',border:`1px solid ${diff==null?'rgba(167,243,208,0.1)':diff>=0?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`}}>
+                    <div style={{fontFamily:'sans-serif',fontSize:'0.62rem',color:'#a7f3d0',marginBottom:2}}>{row.l}</div>
+                    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                      <span style={{fontFamily:'sans-serif',fontSize:'0.88rem',fontWeight:700,color:sc(row.mine)}}>{fmt(row.mine)}</span>
+                      {diff!=null && <span style={{fontFamily:'sans-serif',fontSize:'0.72rem',fontWeight:700,color:diff>=0?'#10b981':'#ef4444',background:diff>=0?'rgba(16,185,129,0.12)':'rgba(239,68,68,0.12)',padding:'0.1rem 0.3rem',borderRadius:4}}>
+                        {diff>=0?'+':''}{diff.toFixed(2)}
+                      </span>}
+                    </div>
+                    <div style={{fontFamily:'sans-serif',fontSize:'0.6rem',color:'#6ee7b7',marginTop:1}}>{seg}: {fmt(row.ref)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Comments */}
+        <div style={{...card,border:'1px solid rgba(251,191,36,0.22)',marginBottom:'1rem'}}>
+          <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:'0.7rem'}}>
+            <AlertC size={14} style={{color:'#fbbf24'}}/>
+            <span style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.7rem',color:'#fbbf24',textTransform:'uppercase',letterSpacing:'0.04em'}}>Comentarios del Evaluador</span>
+          </div>
+          <div style={{background:DARK,borderRadius:10,padding:'0.9rem 1.1rem',borderLeft:'4px solid #fbbf24'}}>
+            {student.cm
+              ? <p style={{fontSize:'0.86rem',lineHeight:1.8,color:'#d1fae5',margin:0}}>{student.cm}</p>
+              : <p style={{fontSize:'0.82rem',color:'#a7f3d0',margin:0,fontStyle:'italic',fontFamily:'sans-serif'}}>Sin comentarios registrados.</p>}
+          </div>
+        </div>
+
+        <div style={{fontFamily:'sans-serif',fontSize:'0.64rem',color:'rgba(167,243,208,0.3)',textAlign:'center',paddingBottom:'1rem'}}>
+          Acceso confidencial · Solo tú puedes ver esta información · SIP Programa de Posgrado
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── MAIN TEACHER DASHBOARD ───────────────────────────────────────────────────
+function Dashboard({onLogout}) {
+  const [view,setView]     = useState('overview');
+  const [sel,setSel]       = useState(null);
+  const [tab,setTab]       = useState('resumen');
+  const [studTab,setStudTab] = useState('perfil');
+  const [cmpSeg,setCmpSeg] = useState('Todos');
+  const [search,setSearch] = useState('');
+  const [progFlt,setProgFlt] = useState('Todos');
+  const [perfFlt,setPerfFlt] = useState('Todos');
+  const [sortK,setSortK]   = useState('mg');
+  const [sortD,setSortD]   = useState('desc');
+  const [hovRow,setHovRow] = useState(null);
+  const [expCmt,setExpCmt] = useState(null);
+  const [drop,setDrop]     = useState(false);
+  const [resSeg,setResSeg] = useState('Todos');  // overview segmentation
+  const [progTab,setProgTab] = useState('grafica'); // programas subtab
+  const dropRef = useRef(null);
+
+  // Close dropdown on outside click
+  useEffect(()=>{
+    const fn = e=>{ if(dropRef.current&&!dropRef.current.contains(e.target))setDrop(false); };
+    document.addEventListener('mousedown',fn);
+    return ()=>document.removeEventListener('mousedown',fn);
+  },[]);
+
+  const perfOpts = ['Todos','Destacado ≥4.0','Satisfactorio 3–4','A mejorar <3'];
+
+  const filtered = useMemo(()=>{
+    let r = DATA.filter(s=>
+      (progFlt==='Todos'||s.pg===progFlt) &&
+      (s.e.toLowerCase().includes(search.toLowerCase())||s.pr.toLowerCase().includes(search.toLowerCase()))
+    );
+    if(perfFlt==='Destacado ≥4.0')    r=r.filter(s=>s.mg!=null&&s.mg>=4);
+    if(perfFlt==='Satisfactorio 3–4') r=r.filter(s=>s.mg!=null&&s.mg>=3&&s.mg<4);
+    if(perfFlt==='A mejorar <3')       r=r.filter(s=>s.mg!=null&&s.mg<3);
+    return [...r].sort((a,b)=>{ const av=a[sortK]??-1,bv=b[sortK]??-1; return sortD==='asc'?av-bv:bv-av; });
+  },[progFlt,perfFlt,search,sortK,sortD]);
+
+  const openStudent = s=>{ setSel(s);setView('student');setStudTab('perfil'); };
+  const navIdx   = sel?filtered.findIndex(s=>s.e===sel.e):-1;
+  const goPrev   = ()=>navIdx>0&&openStudent(filtered[navIdx-1]);
+  const goNext   = ()=>navIdx<filtered.length-1&&openStudent(filtered[navIdx+1]);
+  const togSort  = k=>{ if(sortK===k)setSortD(d=>d==='asc'?'desc':'asc'); else{setSortK(k);setSortD('desc');}};
+  const SIco     = ({k})=>sortK===k?(sortD==='asc'?<SortA size={11}/>:<SortD size={11}/>):<SortA size={11} style={{opacity:.22}}/>;
+
+  const valid    = DATA.filter(s=>s.mg!=null);
+  const pct      = t=>Math.round(valid.filter(s=>s.mg>=t).length/valid.length*100);
+
+  // Segmented overview
+  const resData  = resSeg==='Todos'?DATA:DATA.filter(s=>s.pg===resSeg);
+  const resAvg   = {...Object.fromEntries(DIMS.map(d=>[d,avg(resData,d)])),mg:avg(resData.filter(s=>s.mg!=null),'mg'),mp:avg(resData,'mp'),cv:avg(resData,'cv')};
+  const resDist  = [{r:'< 2.5',mn:0,mx:2.5,c:'#ef4444'},{r:'2.5–3',mn:2.5,mx:3,c:'#f97316'},{r:'3–3.5',mn:3,mx:3.5,c:'#fbbf24'},{r:'3.5–4',mn:3.5,mx:4,c:'#34d399'},{r:'≥ 4',mn:4,mx:5.1,c:'#10b981'}]
+    .map(b=>({...b,n:resData.filter(s=>s.mg!=null&&s.mg>=b.mn&&s.mg<b.mx).length}));
+
+  // Comparison data for student detail
+  const cmpData  = cmpSeg==='Todos'?DATA:DATA.filter(s=>s.pg===cmpSeg);
+  const cmpAvg   = {...Object.fromEntries(DIMS.map(d=>[d,avg(cmpData,d)])),mg:avg(cmpData.filter(s=>s.mg!=null),'mg'),mp:avg(cmpData,'mp'),cv:avg(cmpData,'cv')};
+  const pctRank  = sel&&sel.mg!=null ? Math.round(valid.filter(s=>s.mg<=sel.mg).length/valid.length*100) : null;
+
+  const exportCSV = ()=>{
+    const h='Estudiante,Programa,Introducción,Justificación,Objetivos,Método,Análisis,Discusión,M.Ponderada,M.General,Convivencia';
+    const rows=filtered.map(s=>`"${s.e}","${s.pg}",${s.i},${s.j},${s.o},${s.m},${s.a},${s.d},${s.mp},${s.mg??''},${s.cv}`);
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([[h,...rows].join('\n')],{type:'text/csv;charset=utf-8;'}));a.download='sip_evaluacion_posgrado.csv';a.click();
+  };
+
+  // ── Sidebar ──
+  const Sidebar = () => (
+    <div style={{width:255,flexShrink:0,display:'flex',flexDirection:'column',gap:'0.7rem',overflow:'visible'}}>
+      {/* Search */}
+      <div style={{...card,padding:'0.6rem 0.85rem',display:'flex',alignItems:'center',gap:'0.45rem'}}>
+        <Search size={13} style={{color:'#a7f3d0',flexShrink:0}}/>
+        <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Buscar alumno o proyecto…"
+          style={{background:'transparent',border:'none',color:'#f8fafc',fontSize:'0.78rem',width:'100%'}}/>
+      </div>
+      {/* Program dropdown */}
+      <div ref={dropRef} style={{...card,padding:'0.6rem 0.85rem',cursor:'pointer',position:'relative',zIndex:300}} onClick={()=>setDrop(p=>!p)}>
+        <div style={{display:'flex',alignItems:'center',gap:'0.45rem'}}>
+          <Filter size={13} style={{color:'#a7f3d0',flexShrink:0}}/>
+          <span style={{fontFamily:'sans-serif',fontSize:'0.78rem',flex:1,color:'#d1fae5',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{progFlt}</span>
+          <ChevDown size={12} style={{color:'#a7f3d0',flexShrink:0,transform:drop?'rotate(180deg)':'none',transition:'transform .2s'}}/>
+        </div>
+        {drop && (
+          <div style={{position:'absolute',top:'calc(100% + 4px)',left:0,right:0,background:'#065f46',borderRadius:10,
+            border:'1px solid rgba(167,243,208,0.2)',zIndex:500,boxShadow:'0 10px 35px rgba(0,0,0,0.6)',overflow:'hidden'}}>
+            {PROGRAMS.map(p=>(
+              <div key={p} onClick={e=>{e.stopPropagation();setProgFlt(p);setDrop(false);}}
+                style={{padding:'0.52rem 0.85rem',fontFamily:'sans-serif',fontSize:'0.78rem',cursor:'pointer',
+                  background:progFlt===p?'rgba(52,211,153,0.2)':'transparent',color:'#d1fae5'}}
+                onMouseEnter={e=>e.currentTarget.style.background='rgba(52,211,153,0.12)'}
+                onMouseLeave={e=>e.currentTarget.style.background=progFlt===p?'rgba(52,211,153,0.2)':'transparent'}>
+                {p}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      {/* Perf filter */}
+      <div style={{...card,padding:'0.7rem 0.85rem'}}>
+        <p style={{margin:'0 0 0.4rem',fontFamily:'sans-serif',fontSize:'0.64rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.05em',fontWeight:700}}>Desempeño</p>
+        <div style={{display:'flex',flexDirection:'column',gap:'0.28rem'}}>
+          {perfOpts.map(o=>(
+            <button key={o} onClick={()=>setPerfFlt(o)}
+              style={{padding:'0.35rem 0.6rem',borderRadius:7,border:`1px solid ${perfFlt===o?'#10b981':'rgba(167,243,208,0.15)'}`,
+                cursor:'pointer',background:perfFlt===o?'rgba(52,211,153,0.18)':'transparent',
+                color:perfFlt===o?'#34d399':'#d1fae5',fontFamily:'sans-serif',fontSize:'0.73rem',fontWeight:perfFlt===o?700:400,textAlign:'left'}}>
+              {o}
+            </button>
+          ))}
+        </div>
+      </div>
+      {/* Student list */}
+      <div style={{...card,flex:1}}>
+        <p style={{margin:'0 0 0.45rem',fontFamily:'sans-serif',fontWeight:700,fontSize:'0.64rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.05em'}}>
+          {filtered.length}/{DATA.length} alumnos
+        </p>
+        <div style={{maxHeight:360,overflowY:'auto',display:'flex',flexDirection:'column',gap:'0.22rem'}}>
+          {filtered.map((s,i)=>{
+            const isSel=view==='student'&&sel&&s.e===sel.e;
+            return (
+              <div key={i} onClick={()=>openStudent(s)}
+                style={{padding:'0.42rem 0.6rem',borderRadius:8,cursor:'pointer',transition:'background .12s',
+                  background:isSel?'rgba(52,211,153,0.2)':'transparent',
+                  border:isSel?'1px solid rgba(52,211,153,0.35)':'1px solid transparent'}}
+                onMouseEnter={e=>{if(!isSel)e.currentTarget.style.background='rgba(52,211,153,0.08)';}}
+                onMouseLeave={e=>{if(!isSel)e.currentTarget.style.background='transparent';}}>
+                <div style={{fontFamily:'sans-serif',fontSize:'0.76rem',fontWeight:isSel?700:400,color:'#f8fafc',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.e}</div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:1}}>
+                  <span style={{fontFamily:'sans-serif',fontSize:'0.62rem',color:'#6ee7b7'}}>{s.pg}</span>
+                  <span style={{fontFamily:'sans-serif',fontSize:'0.72rem',fontWeight:700,color:sc(s.mg)}}>{fmt(s.mg)}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Overview tabs content ──────────────────────────────────────────────────
+  const radarGroup = DIMS.map(d=>({m:DL[d],g:+(resAvg[d]??0).toFixed(2)}));
+  const barsSecs   = DIMS.map(d=>({n:DL[d].slice(0,5),v:+(resAvg[d]??0).toFixed(2)}));
+
+  const OverviewContent = () => (<>
+    {tab==='resumen' && (
+      <div style={{display:'flex',flexDirection:'column',gap:'0.9rem'}} className="fade">
+        {/* Segmentation */}
+        <div style={{...card,padding:'0.65rem 1rem'}}>
+          <SegBar label="Segmentar por programa" options={PROGRAMS} value={resSeg} onChange={setResSeg}/>
+        </div>
+        {/* KPIs */}
+        <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:'0.7rem'}}>
+          {[
+            {label:'Promedio General',val:fmt(resAvg.mg),color:'#10b981',icon:<Award size={17}/>},
+            {label:'Media Ponderada',val:fmt(resAvg.mp),color:'#34d399',icon:<TrendUp size={17}/>},
+            {label:'Convivencia',val:fmt(resAvg.cv),color:cc(resAvg.cv??0),icon:<Users size={17}/>},
+            {label:'Destacados ≥4.0',val:`${pct(4)}%`,color:'#fbbf24',icon:<Star size={17}/>},
+            {label:resSeg==='Todos'?'Total alumnos':'Alumnos seg.',val:resData.length,color:'#a7f3d0',icon:<BookOpen size={17}/>},
+          ].map((k,i)=>(
+            <div key={i} style={{...card,textAlign:'center',padding:'0.85rem 0.5rem'}}>
+              <div style={{color:k.color,marginBottom:4,display:'flex',justifyContent:'center'}}>{k.icon}</div>
+              <div style={{fontSize:'1.65rem',fontWeight:700,color:k.color,lineHeight:1}}>{k.val}</div>
+              <div style={{fontSize:'0.62rem',fontFamily:'sans-serif',color:'#a7f3d0',marginTop:3,lineHeight:1.3}}>{k.label}</div>
+            </div>
+          ))}
+        </div>
+        {/* Charts */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'0.9rem'}}>
+          <div style={card}>
+            <p style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.68rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.04em',margin:'0 0 8px'}}>Perfil promedio</p>
+            <ResponsiveContainer width="100%" height={205}>
+              <RadarChart data={radarGroup}>
+                <PolarGrid stroke="rgba(167,243,208,0.17)"/>
+                <PolarAngleAxis dataKey="m" tick={{fill:'#d1fae5',fontSize:9,fontFamily:'sans-serif'}}/>
+                <PolarRadiusAxis angle={90} domain={[0,5]} tick={{fill:'#a7f3d0',fontSize:8}} tickCount={6}/>
+                <Radar name="Grupo" dataKey="g" stroke="#10b981" fill="#10b981" fillOpacity={0.3} strokeWidth={2}/>
+              </RadarChart>
+            </ResponsiveContainer>
+          </div>
+          <div style={card}>
+            <p style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.68rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.04em',margin:'0 0 8px'}}>Media por sección</p>
+            <ResponsiveContainer width="100%" height={205}>
+              <BarChart data={barsSecs} margin={{bottom:5,left:-12}}>
+                <XAxis dataKey="n" tick={{fill:'#d1fae5',fontSize:9,fontFamily:'sans-serif'}}/>
+                <YAxis domain={[0,5]} tick={{fill:'#a7f3d0',fontSize:8}} tickCount={6}/>
+                <Tooltip contentStyle={{background:DARK,border:'1px solid rgba(167,243,208,0.2)',borderRadius:8,fontFamily:'sans-serif',fontSize:'0.75rem'}} cursor={{fill:'rgba(167,243,208,0.05)'}}/>
+                <ReferenceLine y={resAvg.mg??0} stroke="#fbbf2488" strokeDasharray="4 2"/>
+                <defs><linearGradient id="bg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#34d399"/><stop offset="100%" stopColor="#10b981"/></linearGradient></defs>
+                <Bar dataKey="v" fill="url(#bg1)" radius={[5,5,0,0]}/>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <div style={card}>
+            <p style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.68rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.04em',margin:'0 0 8px'}}>Distribución de notas</p>
+            <ResponsiveContainer width="100%" height={205}>
+              <BarChart data={resDist} margin={{bottom:5,left:-12}}>
+                <XAxis dataKey="r" tick={{fill:'#d1fae5',fontSize:9,fontFamily:'sans-serif'}}/>
+                <YAxis allowDecimals={false} tick={{fill:'#a7f3d0',fontSize:8}}/>
+                <Tooltip contentStyle={{background:DARK,border:'1px solid rgba(167,243,208,0.2)',borderRadius:8,fontFamily:'sans-serif',fontSize:'0.75rem'}} cursor={{fill:'rgba(167,243,208,0.05)'}} formatter={v=>[`${v} alumnos`,'n']}/>
+                <Bar dataKey="n" radius={[5,5,0,0]}>{resDist.map((e,i)=><Cell key={i} fill={e.c}/>)}</Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        {/* Fortalezas / mejoras */}
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.9rem'}}>
+          {[{label:'✅ Fortalezas del segmento',color:'#10b981',sorted:[...DIMS].sort((a,b)=>(resAvg[b]??0)-(resAvg[a]??0)).slice(0,3)},
+            {label:'⚠️ Áreas de mejora',color:'#ef4444',sorted:[...DIMS].sort((a,b)=>(resAvg[a]??0)-(resAvg[b]??0)).slice(0,3)}
+          ].map(({label,color,sorted})=>(
+            <div key={label} style={{...card,border:`1px solid ${color}33`}}>
+              <p style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.7rem',color,textTransform:'uppercase',letterSpacing:'0.04em',margin:'0 0 0.65rem'}}>{label}</p>
+              <div style={{display:'flex',flexDirection:'column',gap:'0.38rem'}}>
+                {sorted.map(d=>(
+                  <div key={d} style={{display:'flex',alignItems:'center',gap:'0.6rem',background:DARK,borderRadius:8,padding:'0.48rem 0.7rem'}}>
+                    <div style={{width:5,height:5,borderRadius:'50%',background:color,flexShrink:0}}/>
+                    <span style={{fontFamily:'sans-serif',fontSize:'0.77rem',color:'#d1fae5',flex:1}}>{DL[d]}</span>
+                    <span style={{fontFamily:'sans-serif',fontSize:'0.85rem',fontWeight:700,color}}>{fmt(resAvg[d])}</span>
+                    <div style={{width:46,height:4,background:'rgba(167,243,208,0.12)',borderRadius:2,overflow:'hidden',flexShrink:0}}>
+                      <div style={{width:`${((resAvg[d]??0)/5)*100}%`,height:'100%',background:color,borderRadius:2}}/>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {tab==='programas' && (
+      <div style={{display:'flex',flexDirection:'column',gap:'0.9rem'}} className="fade">
+        {/* Sub-tabs */}
+        <div style={{...card,padding:'0.65rem 1rem',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'0.5rem'}}>
+          <TabBar tabs={[{id:'grafica',label:'📊 Gráfica comparativa'},{id:'tarjetas',label:'🗂 Tarjetas por programa'}]} active={progTab} onChange={setProgTab}/>
+        </div>
+
+        {progTab==='grafica' && (
+          <div style={card}>
+            <p style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.7rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.04em',margin:'0 0 8px'}}>Media general por programa</p>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={PROG_STATS.map(p=>({n:p.pg,mg:p.mg!=null?+p.mg.toFixed(2):0}))} margin={{bottom:40,left:-10}}>
+                <XAxis dataKey="n" tick={{fill:'#d1fae5',fontSize:8,fontFamily:'sans-serif'}} angle={-25} textAnchor="end" interval={0}/>
+                <YAxis domain={[0,5]} tick={{fill:'#a7f3d0',fontSize:8}} tickCount={6}/>
+                <Tooltip contentStyle={{background:DARK,border:'1px solid rgba(167,243,208,0.2)',borderRadius:8,fontFamily:'sans-serif',fontSize:'0.75rem'}} cursor={{fill:'rgba(167,243,208,0.05)'}}/>
+                <ReferenceLine y={GRP_AVG.mg??0} stroke="#fbbf2488" strokeDasharray="4 2" label={{value:'Grupo',fill:'#fbbf24',fontSize:9,fontFamily:'sans-serif'}}/>
+                <Bar dataKey="mg" radius={[6,6,0,0]}>{PROG_STATS.map((p,i)=><Cell key={i} fill={sc(p.mg)}/>)}</Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {progTab==='tarjetas' && (
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(290px,1fr))',gap:'0.85rem'}}>
+            {PROG_STATS.map((p,i)=>(
+              <div key={i} style={{...card,border:`1px solid ${sc(p.mg)}33`,padding:'1rem'}}>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.7rem'}}>
+                  <div>
+                    <div style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.87rem',color:'#f8fafc'}}>{p.pg}</div>
+                    <div style={{fontFamily:'sans-serif',fontSize:'0.65rem',color:'#a7f3d0',marginTop:1}}>{p.n} alumno{p.n!==1?'s':''}</div>
+                  </div>
+                  <div style={{textAlign:'center'}}>
+                    <div style={{fontSize:'1.35rem',fontWeight:700,color:sc(p.mg),lineHeight:1}}>{p.mg!=null?p.mg.toFixed(2):'—'}</div>
+                    <div style={{fontFamily:'sans-serif',fontSize:'0.58rem',color:'#a7f3d0'}}>media</div>
+                  </div>
+                </div>
+                <div style={{display:'flex',flexDirection:'column',gap:'0.26rem',marginBottom:'0.7rem'}}>
+                  {DIMS.map(d=>(
+                    <div key={d} style={{display:'flex',alignItems:'center',gap:'0.4rem'}}>
+                      <span style={{fontFamily:'sans-serif',fontSize:'0.63rem',color:'#a7f3d0',width:58,flexShrink:0}}>{DL[d]}</span>
+                      <div style={{flex:1,height:5,background:'rgba(167,243,208,0.1)',borderRadius:2,overflow:'hidden'}}>
+                        <div style={{width:`${((p[d]??0)/5)*100}%`,height:'100%',background:sc(p[d]),borderRadius:2}}/>
+                      </div>
+                      <span style={{fontFamily:'sans-serif',fontSize:'0.65rem',fontWeight:700,color:sc(p[d]),width:26,textAlign:'right'}}>{p[d]!=null?p[d].toFixed(2):'—'}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'0.3rem',paddingTop:'0.6rem',borderTop:'1px solid rgba(167,243,208,0.1)',marginBottom:'0.6rem'}}>
+                  {[{l:'Conv.',v:p.cv!=null?p.cv.toFixed(2):'—',c:cc(p.cv??0)},
+                    {l:'Destacados',v:p.hi,c:'#10b981'},{l:'A mejorar',v:p.lo,c:'#ef4444'}].map((x,j)=>(
+                    <div key={j} style={{textAlign:'center'}}>
+                      <div style={{fontFamily:'sans-serif',fontSize:'0.75rem',fontWeight:700,color:x.c}}>{x.v}</div>
+                      <div style={{fontFamily:'sans-serif',fontSize:'0.58rem',color:'#a7f3d0'}}>{x.l}</div>
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div style={{fontFamily:'sans-serif',fontSize:'0.62rem',color:'#a7f3d0',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'0.3rem'}}>Alumnos</div>
+                  <div style={{display:'flex',flexDirection:'column',gap:'2px'}}>
+                    {DATA.filter(s=>s.pg===p.pg).sort((a,b)=>(b.mg??0)-(a.mg??0)).map((s,j)=>(
+                      <div key={j} onClick={()=>openStudent(s)} style={{display:'flex',justifyContent:'space-between',padding:'0.26rem 0.45rem',borderRadius:6,cursor:'pointer',background:'rgba(6,78,59,0.5)',transition:'background .12s'}}
+                        onMouseEnter={e=>e.currentTarget.style.background='rgba(52,211,153,0.14)'}
+                        onMouseLeave={e=>e.currentTarget.style.background='rgba(6,78,59,0.5)'}>
+                        <span style={{fontFamily:'sans-serif',fontSize:'0.71rem',color:'#d1fae5',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.e}</span>
+                        <span style={{fontFamily:'sans-serif',fontSize:'0.71rem',fontWeight:700,color:sc(s.mg),marginLeft:4,flexShrink:0}}>{fmt(s.mg)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )}
+
+    {tab==='comentarios' && (
+      <div style={{display:'flex',flexDirection:'column',gap:'0.85rem'}} className="fade">
+        <div style={{...card,padding:'0.7rem 1rem',background:'rgba(251,191,36,0.07)',border:'1px solid rgba(251,191,36,0.2)'}}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'0.5rem'}}>
+            <p style={{margin:0,fontFamily:'sans-serif',fontSize:'0.8rem',color:'#d1fae5'}}>
+              <span style={{color:'#fbbf24',fontWeight:700}}>💬 {filtered.filter(s=>s.cm).length} con comentarios</span> de {filtered.length} mostrados
+            </p>
+            <div style={{display:'flex',alignItems:'center',gap:'0.4rem',flexWrap:'wrap'}}>
+              <span style={{fontFamily:'sans-serif',fontSize:'0.68rem',color:'#a7f3d0',fontWeight:700}}>Filtrar:</span>
+              {PROGRAMS.map(p=>(
+                <button key={p} onClick={()=>setProgFlt(p)}
+                  style={{padding:'0.22rem 0.55rem',borderRadius:6,border:`1px solid ${progFlt===p?'#10b981':'rgba(167,243,208,0.2)'}`,cursor:'pointer',
+                    background:progFlt===p?'rgba(52,211,153,0.2)':'transparent',color:progFlt===p?'#34d399':'#a7f3d0',
+                    fontFamily:'sans-serif',fontSize:'0.68rem',fontWeight:progFlt===p?700:400}}>
+                  {p}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        {[...new Set(filtered.map(s=>s.pg))].sort().map(prog=>{
+          const members=filtered.filter(s=>s.pg===prog&&s.cm);
+          if(!members.length) return null;
+          return (
+            <div key={prog} style={card}>
+              <div style={{display:'flex',alignItems:'center',gap:'0.55rem',marginBottom:'0.85rem',paddingBottom:'0.6rem',borderBottom:'1px solid rgba(167,243,208,0.12)'}}>
+                <span style={{background:'rgba(52,211,153,0.18)',color:'#34d399',padding:'0.22rem 0.65rem',borderRadius:6,fontFamily:'sans-serif',fontWeight:700,fontSize:'0.76rem'}}>{prog}</span>
+                <span style={{fontFamily:'sans-serif',fontSize:'0.7rem',color:'#6ee7b7'}}>{members.length} comentario{members.length!==1?'s':''}</span>
+              </div>
+              <div style={{display:'flex',flexDirection:'column',gap:'0.55rem'}}>
+                {members.map((s,i)=>{
+                  const key=`${prog}-${i}`;
+                  const isExp=expCmt===key;
+                  const MAX=200; const trunc=s.cm.length>MAX;
+                  return (
+                    <div key={i} style={{background:DARK,borderRadius:11,padding:'0.8rem 1rem',border:`1px solid ${sc(s.mg)}22`}}>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:'0.5rem',flexWrap:'wrap',gap:'0.35rem'}}>
+                        <div style={{flex:1,minWidth:0}}>
+                          <button onClick={()=>openStudent(s)} style={{background:'none',border:'none',padding:0,cursor:'pointer',textAlign:'left',fontFamily:'sans-serif',fontWeight:700,fontSize:'0.8rem',color:'#f8fafc',textDecoration:'underline',textDecorationColor:'rgba(167,243,208,0.3)'}}>
+                            {s.e}
+                          </button>
+                          <div style={{fontFamily:'sans-serif',fontSize:'0.65rem',color:'#a7f3d0',marginTop:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:280}}>{s.pr}</div>
+                        </div>
+                        <div style={{display:'flex',gap:'0.3rem',flexShrink:0,alignItems:'center'}}>
+                          <span style={{background:`${sc(s.mg)}22`,color:sc(s.mg),padding:'0.12rem 0.4rem',borderRadius:5,fontFamily:'sans-serif',fontWeight:700,fontSize:'0.73rem'}}>{fmt(s.mg)}</span>
+                          <span style={{color:cc(s.cv??0),fontFamily:'sans-serif',fontSize:'0.65rem',fontWeight:600}}>cv {fmt(s.cv)}</span>
+                        </div>
+                      </div>
+                      <div style={{borderLeft:'3px solid rgba(167,243,208,0.22)',paddingLeft:'0.75rem'}}>
+                        <p style={{fontSize:'0.8rem',lineHeight:1.75,color:'#d1fae5',margin:'0 0 0.3rem'}}>
+                          {isExp||!trunc?s.cm:s.cm.slice(0,MAX)+'…'}
+                        </p>
+                        {trunc && <button onClick={()=>setExpCmt(isExp?null:key)} style={{background:'none',border:'none',padding:0,cursor:'pointer',color:'#34d399',fontFamily:'sans-serif',fontSize:'0.7rem',fontWeight:700}}>
+                          {isExp?'▲ Ver menos':'▼ Ver más'}
+                        </button>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+        {filtered.filter(s=>!s.cm).length>0 && (
+          <div style={{...card,opacity:.5}}>
+            <p style={{margin:'0 0 0.38rem',fontFamily:'sans-serif',fontSize:'0.64rem',color:'#a7f3d0',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.04em'}}>Sin comentarios</p>
+            <div style={{display:'flex',flexWrap:'wrap',gap:'0.3rem'}}>
+              {filtered.filter(s=>!s.cm).map((s,i)=>(
+                <button key={i} onClick={()=>openStudent(s)} style={{background:DARK,border:'1px solid rgba(167,243,208,0.15)',borderRadius:6,padding:'0.25rem 0.55rem',cursor:'pointer',color:'#a7f3d0',fontFamily:'sans-serif',fontSize:'0.7rem'}}>
+                  {s.e.split(' ').slice(0,2).join(' ')}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+
+    {tab==='tabla' && (
+      <div style={{...card,padding:'0.9rem'}} className="fade">
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'0.7rem',flexWrap:'wrap',gap:'0.5rem'}}>
+          <span style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.7rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.04em'}}>Tabla ordenable · {filtered.length} resultados</span>
+          <button onClick={exportCSV} style={{padding:'0.4rem 0.85rem',borderRadius:8,border:'1px solid rgba(167,243,208,0.3)',cursor:'pointer',background:'transparent',color:'#d1fae5',fontFamily:'sans-serif',fontWeight:600,fontSize:'0.75rem',display:'flex',alignItems:'center',gap:4}}>
+            <Download size={13}/>Exportar CSV
+          </button>
+        </div>
+        <div style={{overflowX:'auto'}}>
+          <table style={{width:'100%',borderCollapse:'collapse',fontFamily:'sans-serif',fontSize:'0.75rem'}}>
+            <thead>
+              <tr style={{borderBottom:'1px solid rgba(167,243,208,0.18)'}}>
+                {[{k:'e',l:'Estudiante'},{k:'pg',l:'Programa'},...DIMS.map(d=>({k:d,l:DL[d].slice(0,5)+'.'})),
+                  {k:'mp',l:'M.P.'},{k:'mg',l:'Media'},{k:'cv',l:'Conv.'}
+                ].map(({k,l})=>(
+                  <th key={k} onClick={()=>togSort(k)}
+                    style={{padding:'0.38rem 0.48rem',textAlign:k==='e'||k==='pg'?'left':'center',
+                      color:'#a7f3d0',fontWeight:700,cursor:'pointer',whiteSpace:'nowrap',userSelect:'none'}}>
+                    <span style={{display:'inline-flex',alignItems:'center',gap:2}}>{l}<SIco k={k}/></span>
+                  </th>
+                ))}
+                <th style={{padding:'0.38rem 0.48rem',color:'#a7f3d0',fontWeight:700}}>Ver</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((s,i)=>(
+                <tr key={i} style={{borderBottom:'1px solid rgba(167,243,208,0.06)',background:hovRow===i?'rgba(52,211,153,0.06)':'transparent',transition:'background .1s'}}
+                  onMouseEnter={()=>setHovRow(i)} onMouseLeave={()=>setHovRow(null)}>
+                  <td style={{padding:'0.42rem 0.48rem',fontWeight:600,color:'#f8fafc',whiteSpace:'nowrap'}}>{s.e}</td>
+                  <td style={{padding:'0.42rem 0.48rem'}}><span style={{background:'rgba(52,211,153,0.14)',color:'#34d399',padding:'0.1rem 0.38rem',borderRadius:5,fontSize:'0.68rem',fontWeight:600,whiteSpace:'nowrap'}}>{s.pg}</span></td>
+                  {DIMS.map(d=><td key={d} style={{padding:'0.42rem 0.48rem',textAlign:'center',color:sc(s[d]),fontWeight:600}}>{fmt(s[d])}</td>)}
+                  <td style={{padding:'0.42rem 0.48rem',textAlign:'center',color:sc(s.mp),fontWeight:600}}>{fmt(s.mp)}</td>
+                  <td style={{padding:'0.42rem 0.48rem',textAlign:'center'}}><span style={{background:`${sc(s.mg)}22`,color:sc(s.mg),padding:'0.12rem 0.42rem',borderRadius:6,fontWeight:700}}>{fmt(s.mg)}</span></td>
+                  <td style={{padding:'0.42rem 0.48rem',textAlign:'center',color:cc(s.cv??0),fontWeight:600}}>{fmt(s.cv)}</td>
+                  <td style={{padding:'0.42rem 0.48rem',textAlign:'center'}}>
+                    <button onClick={()=>openStudent(s)} style={{background:'rgba(52,211,153,0.16)',border:'none',borderRadius:6,padding:'0.22rem 0.5rem',cursor:'pointer',color:'#34d399',fontSize:'0.68rem',fontWeight:700}}>Ver →</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    )}
+  </>);
+
+  // ── Student detail (teacher mode) ─────────────────────────────────────────
+  const StudentDetail = () => {
+    if(!sel) return null;
+    const rank = RANKED.findIndex(s=>s.e===sel.e)+1;
+    const barData = DIMS.map(d=>({n:DL[d].slice(0,5),a:+(sel[d]??0).toFixed(2),...(studTab==='comparar'?{r:+(cmpAvg[d]??0).toFixed(2)}:{})}));
+    const radarD  = DIMS.map(d=>({m:DL[d],a:+(sel[d]??0).toFixed(2),r:+(cmpAvg[d]??0).toFixed(2)}));
+    return (
+      <div style={{flex:1,minWidth:0,display:'flex',flexDirection:'column',gap:'0.9rem'}}>
+        {/* Nav strip */}
+        <div style={{display:'flex',alignItems:'center',gap:'0.45rem',flexWrap:'wrap'}}>
+          <button onClick={()=>{setView('overview');setStudTab('perfil');}}
+            style={{padding:'0.38rem 0.75rem',borderRadius:8,border:'none',cursor:'pointer',background:'rgba(255,255,255,0.09)',color:'#d1fae5',fontWeight:600,fontSize:'0.73rem',display:'flex',alignItems:'center',gap:4}}>
+            <ArrowL size={12}/> General
+          </button>
+          <button onClick={goPrev} disabled={navIdx<=0}
+            style={{padding:'0.38rem 0.55rem',borderRadius:8,border:'none',cursor:navIdx>0?'pointer':'not-allowed',background:'rgba(255,255,255,0.09)',color:navIdx>0?'#d1fae5':'#374151',fontWeight:700}}>
+            <ChevL size={13}/>
+          </button>
+          <span style={{fontFamily:'sans-serif',fontSize:'0.7rem',color:'#6ee7b7'}}>{navIdx+1}/{filtered.length}</span>
+          <button onClick={goNext} disabled={navIdx>=filtered.length-1}
+            style={{padding:'0.38rem 0.55rem',borderRadius:8,border:'none',cursor:navIdx<filtered.length-1?'pointer':'not-allowed',background:'rgba(255,255,255,0.09)',color:navIdx<filtered.length-1?'#d1fae5':'#374151',fontWeight:700}}>
+            <ChevR size={13}/>
+          </button>
+          <div style={{flex:1}}/>
+          <TabBar tabs={[{id:'perfil',label:'📊 Perfil'},{id:'comparar',label:'⊞ Comparar'},{id:'comentarios',label:'💬 Comentarios'}]} active={studTab} onChange={setStudTab}/>
+        </div>
+
+        {/* Header card */}
+        <div style={card}>
+          <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',flexWrap:'wrap',gap:'0.7rem'}}>
+            <div style={{flex:1,minWidth:0}}>
+              <h2 style={{fontSize:'1.2rem',fontWeight:700,margin:'0 0 0.3rem',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{sel.e}</h2>
+              <span style={{background:'rgba(52,211,153,0.18)',color:'#34d399',padding:'0.2rem 0.6rem',borderRadius:6,fontFamily:'sans-serif',fontWeight:600,fontSize:'0.73rem'}}>{sel.pg}</span>
+            </div>
+            <div style={{display:'flex',gap:'0.45rem',flexWrap:'wrap',flexShrink:0}}>
+              {[{l:'Media',v:fmt(sel.mg),c:sc(sel.mg),sub:sl(sel.mg)},
+                {l:'Percentil',v:pctRank!=null?`P${pctRank}`:'—',c:'#fbbf24',sub:'del grupo'},
+                {l:'Convivencia',v:fmt(sel.cv),c:cc(sel.cv??0),sub:'/10'},
+                {l:'Posición',v:`#${rank}`,c:'#a7f3d0',sub:`de ${RANKED.length}`},
+              ].map((k,i)=>(
+                <div key={i} style={{background:`${k.c}15`,border:`2px solid ${k.c}40`,padding:'0.55rem 0.8rem',borderRadius:10,textAlign:'center',minWidth:72}}>
+                  <div style={{fontSize:'1.3rem',fontWeight:700,color:k.c,lineHeight:1}}>{k.v}</div>
+                  <div style={{fontFamily:'sans-serif',fontSize:'0.56rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.04em',marginTop:1}}>{k.l}</div>
+                  <div style={{fontFamily:'sans-serif',fontSize:'0.6rem',color:k.c,marginTop:1}}>{k.sub}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{background:DARK,borderRadius:8,padding:'0.7rem 0.9rem',marginTop:'0.7rem',border:'1px solid rgba(167,243,208,0.1)'}}>
+            <div style={{fontFamily:'sans-serif',fontSize:'0.6rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.04em',marginBottom:'0.22rem'}}>Proyecto</div>
+            <p style={{fontSize:'0.82rem',lineHeight:1.6,margin:0,color:'#d1fae5'}}>{sel.pr}</p>
+          </div>
+        </div>
+
+        {/* PERFIL */}
+        {studTab==='perfil' && (
+          <div style={{display:'flex',flexDirection:'column',gap:'0.9rem'}}>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:'0.6rem'}}>
+              {DIMS.map(d=><DimBar key={d} d={d} val={sel[d]} ref={null} showRef={false}/>)}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.9rem'}}>
+              <div style={card}>
+                <p style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.68rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.04em',margin:'0 0 8px'}}>Perfil radial vs Grupo</p>
+                <ResponsiveContainer width="100%" height={230}>
+                  <RadarChart data={radarD}>
+                    <PolarGrid stroke="rgba(167,243,208,0.17)"/>
+                    <PolarAngleAxis dataKey="m" tick={{fill:'#d1fae5',fontSize:10,fontFamily:'sans-serif'}}/>
+                    <PolarRadiusAxis angle={90} domain={[0,5]} tick={{fill:'#a7f3d0',fontSize:8}} tickCount={6}/>
+                    <Radar name="Grupo" dataKey="r" stroke="#fbbf24" fill="#fbbf24" fillOpacity={0.1} strokeWidth={1.5} strokeDasharray="4 2"/>
+                    <Radar name={sel.e.split(' ')[0]} dataKey="a" stroke="#10b981" fill="#10b981" fillOpacity={0.3} strokeWidth={2}/>
+                    <Legend wrapperStyle={{fontFamily:'sans-serif',fontSize:'0.7rem',color:'#d1fae5'}}/>
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={card}>
+                <p style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.68rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.04em',margin:'0 0 8px'}}>Calificación por sección</p>
+                <ResponsiveContainer width="100%" height={230}>
+                  <BarChart data={barData} margin={{bottom:5,left:-12}}>
+                    <XAxis dataKey="n" tick={{fill:'#d1fae5',fontSize:9,fontFamily:'sans-serif'}}/>
+                    <YAxis domain={[0,5]} tick={{fill:'#a7f3d0',fontSize:8}} tickCount={6}/>
+                    <Tooltip contentStyle={{background:DARK,border:'1px solid rgba(167,243,208,0.2)',borderRadius:8,fontFamily:'sans-serif',fontSize:'0.75rem'}} cursor={{fill:'rgba(167,243,208,0.05)'}}/>
+                    <defs><linearGradient id="sg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#34d399"/><stop offset="100%" stopColor="#10b981"/></linearGradient></defs>
+                    <Bar dataKey="a" name="Alumno" fill="url(#sg2)" radius={[5,5,0,0]}/>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* COMPARAR */}
+        {studTab==='comparar' && (
+          <div style={{display:'flex',flexDirection:'column',gap:'0.9rem'}}>
+            <div style={{...card,padding:'0.7rem 1rem'}}>
+              <SegBar label="Comparar vs" options={PROGRAMS} value={cmpSeg} onChange={setCmpSeg}/>
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(6,1fr)',gap:'0.6rem'}}>
+              {DIMS.map(d=><DimBar key={d} d={d} val={sel[d]} ref={cmpAvg[d]} showRef={true}/>)}
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'0.9rem'}}>
+              <div style={card}>
+                <p style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.68rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.04em',margin:'0 0 8px'}}>Radar vs {cmpSeg}</p>
+                <ResponsiveContainer width="100%" height={225}>
+                  <RadarChart data={radarD}>
+                    <PolarGrid stroke="rgba(167,243,208,0.17)"/>
+                    <PolarAngleAxis dataKey="m" tick={{fill:'#d1fae5',fontSize:10,fontFamily:'sans-serif'}}/>
+                    <PolarRadiusAxis angle={90} domain={[0,5]} tick={{fill:'#a7f3d0',fontSize:8}} tickCount={6}/>
+                    <Radar name={cmpSeg} dataKey="r" stroke="#fbbf24" fill="#fbbf24" fillOpacity={0.1} strokeWidth={1.5} strokeDasharray="4 2"/>
+                    <Radar name={sel.e.split(' ')[0]} dataKey="a" stroke="#10b981" fill="#10b981" fillOpacity={0.3} strokeWidth={2}/>
+                    <Legend wrapperStyle={{fontFamily:'sans-serif',fontSize:'0.7rem',color:'#d1fae5'}}/>
+                  </RadarChart>
+                </ResponsiveContainer>
+              </div>
+              <div style={card}>
+                <p style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.68rem',color:'#a7f3d0',textTransform:'uppercase',letterSpacing:'0.04em',margin:'0 0 8px'}}>Barras comparativas</p>
+                <ResponsiveContainer width="100%" height={225}>
+                  <BarChart data={barData} margin={{bottom:5,left:-12}}>
+                    <XAxis dataKey="n" tick={{fill:'#d1fae5',fontSize:9,fontFamily:'sans-serif'}}/>
+                    <YAxis domain={[0,5]} tick={{fill:'#a7f3d0',fontSize:8}} tickCount={6}/>
+                    <Tooltip contentStyle={{background:DARK,border:'1px solid rgba(167,243,208,0.2)',borderRadius:8,fontFamily:'sans-serif',fontSize:'0.75rem'}} cursor={{fill:'rgba(167,243,208,0.05)'}}/>
+                    <Legend wrapperStyle={{fontFamily:'sans-serif',fontSize:'0.7rem'}}/>
+                    <defs><linearGradient id="sg3" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#34d399"/><stop offset="100%" stopColor="#10b981"/></linearGradient></defs>
+                    <Bar dataKey="a" name="Alumno" fill="url(#sg3)" radius={[5,5,0,0]}/>
+                    <Bar dataKey="r" name={cmpSeg} fill="#fbbf2455" radius={[5,5,0,0]}/>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            {/* Numeric diff table */}
+            <div style={{...card,background:'rgba(251,191,36,0.06)',border:'1px solid rgba(251,191,36,0.2)',padding:'0.9rem 1.1rem'}}>
+              <p style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.7rem',color:'#fbbf24',textTransform:'uppercase',letterSpacing:'0.04em',margin:'0 0 0.7rem'}}>Diferencia vs {cmpSeg}</p>
+              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'0.45rem'}}>
+                {[...DIMS.map(d=>({l:DL[d],mine:sel[d],ref:cmpAvg[d]})),
+                  {l:'Media Ponderada',mine:sel.mp,ref:avg(cmpData,'mp')},
+                  {l:'Media General',mine:sel.mg,ref:cmpAvg.mg},
+                ].map((row,i)=>{
+                  const diff=row.mine!=null&&row.ref!=null?row.mine-row.ref:null;
+                  return (
+                    <div key={i} style={{background:DARK,borderRadius:8,padding:'0.48rem 0.68rem',border:`1px solid ${diff==null?'rgba(167,243,208,0.1)':diff>=0?'rgba(16,185,129,0.3)':'rgba(239,68,68,0.3)'}`}}>
+                      <div style={{fontFamily:'sans-serif',fontSize:'0.61rem',color:'#a7f3d0',marginBottom:2}}>{row.l}</div>
+                      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                        <span style={{fontFamily:'sans-serif',fontSize:'0.86rem',fontWeight:700,color:sc(row.mine)}}>{fmt(row.mine)}</span>
+                        {diff!=null && <span style={{fontFamily:'sans-serif',fontSize:'0.7rem',fontWeight:700,color:diff>=0?'#10b981':'#ef4444',background:diff>=0?'rgba(16,185,129,0.12)':'rgba(239,68,68,0.12)',padding:'0.1rem 0.3rem',borderRadius:4}}>
+                          {diff>=0?'+':''}{diff.toFixed(2)}
+                        </span>}
+                      </div>
+                      <div style={{fontFamily:'sans-serif',fontSize:'0.58rem',color:'#6ee7b7',marginTop:1}}>{cmpSeg}: {fmt(row.ref)}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* COMENTARIOS */}
+        {studTab==='comentarios' && (
+          <div style={{...card,border:'1px solid rgba(251,191,36,0.22)'}}>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:'0.7rem'}}>
+              <AlertC size={14} style={{color:'#fbbf24'}}/>
+              <span style={{fontFamily:'sans-serif',fontWeight:700,fontSize:'0.7rem',color:'#fbbf24',textTransform:'uppercase',letterSpacing:'0.04em'}}>Comentarios del Evaluador</span>
+            </div>
+            <div style={{background:DARK,borderRadius:10,padding:'0.9rem 1.1rem',borderLeft:'4px solid #fbbf24'}}>
+              {sel.cm
+                ? <p style={{fontSize:'0.85rem',lineHeight:1.8,color:'#d1fae5',margin:0}}>{sel.cm}</p>
+                : <p style={{fontSize:'0.82rem',color:'#a7f3d0',margin:0,fontStyle:'italic',fontFamily:'sans-serif'}}>Sin comentarios registrados.</p>}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // ── Main layout ────────────────────────────────────────────────────────────
+  return (
+    <div style={{minHeight:'100vh',background:BG,overflowX:'hidden'}}>
+      {/* Top bar */}
+      <div style={{background:'rgba(6,78,59,0.75)',backdropFilter:'blur(20px)',borderBottom:'1px solid rgba(167,243,208,0.12)',padding:'0.75rem 1.5rem',position:'sticky',top:0,zIndex:200}}>
+        <div style={{maxWidth:1300,margin:'0 auto',display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:'0.75rem'}}>
+          <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
+            <h1 style={{fontSize:'1.3rem',fontWeight:700,margin:0,background:'linear-gradient(135deg,#34d399,#10b981)',WebkitBackgroundClip:'text',WebkitTextFillColor:'transparent'}}>🌿 SIP · Posgrado</h1>
+            {view==='overview' && (
+              <TabBar tabs={[
+                {id:'resumen',label:'📊 Resumen'},
+                {id:'programas',label:'🎓 Programas'},
+                {id:'comentarios',label:'💬 Comentarios'},
+                {id:'tabla',label:'📋 Tabla'},
+              ]} active={tab} onChange={setTab}/>
+            )}
+          </div>
+          <div style={{display:'flex',gap:6,alignItems:'center'}}>
+            {view==='overview' && (
+              <button onClick={exportCSV} style={{padding:'0.4rem 0.85rem',borderRadius:8,border:'1px solid rgba(167,243,208,0.28)',cursor:'pointer',background:'transparent',color:'#d1fae5',fontWeight:600,fontSize:'0.73rem',display:'flex',alignItems:'center',gap:4}}>
+                <Download size={13}/>CSV
+              </button>
+            )}
+            <button onClick={onLogout} style={{padding:'0.4rem 0.85rem',borderRadius:8,border:'1px solid rgba(239,68,68,0.35)',cursor:'pointer',background:'rgba(239,68,68,0.1)',color:'#fca5a5',fontWeight:600,fontSize:'0.73rem',display:'flex',alignItems:'center',gap:4}}>
+              <LogOut size={13}/>Salir
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div style={{maxWidth:1300,margin:'0 auto',padding:'1.1rem 1.5rem',display:'flex',gap:'1.1rem',alignItems:'flex-start'}}>
+        <Sidebar/>
+        <div style={{flex:1,minWidth:0}}>
+          {view==='overview' ? <OverviewContent/> : <StudentDetail/>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── APP ROOT ──────────────────────────────────────────────────────────────────
+function App() {
+  const [session,setSession] = useState(null);
+  if(!session) return <LoginGate onTeacher={()=>setSession({r:'teacher'})} onStudent={(s,rank)=>setSession({r:'student',s,rank})}/>;
+  if(session.r==='student') return <StudentView student={session.s} rank={session.rank} onLogout={()=>setSession(null)}/>;
+  return <Dashboard onLogout={()=>setSession(null)}/>;
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
